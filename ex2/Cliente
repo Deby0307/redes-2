@@ -1,0 +1,75 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+import socket
+import argparse
+
+
+def configurar_cliente():
+    """Recebe o endereço e a porta do servidor."""
+    parser = argparse.ArgumentParser(description="Cliente de comunicação UDP")
+
+    parser.add_argument("ip", help="Endereço IP do servidor")
+    parser.add_argument("porta", type=int,
+                        help="Porta utilizada pelo servidor")
+
+    return parser.parse_args()
+
+
+def enviar_mensagens(ip, porta):
+    limite = 65507
+    endereco_servidor = (ip, porta)
+
+    # Inicializa o socket utilizando UDP
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as cliente:
+
+        cliente.settimeout(5)
+
+        print("\nConexão UDP iniciada!")
+        print("Digite 'sair' para finalizar.\n")
+
+        while True:
+            mensagem = input("Digite sua mensagem: ")
+
+            if mensagem.strip().lower() == "sair":
+                print("Encerrando o cliente...")
+                break
+
+            if not mensagem.strip():
+                print("Não é permitido enviar mensagens vazias.")
+                continue
+
+            conteudo = mensagem.encode("utf-8")
+
+            if len(conteudo) > limite:
+                print("Mensagem muito grande! Limite de 65.507 bytes.")
+                continue
+
+            try:
+                cliente.sendto(conteudo, endereco_servidor)
+
+                resposta, origem = cliente.recvfrom(limite)
+
+                texto_recebido = resposta.decode("utf-8", errors="replace")
+
+                print(f"Resposta do servidor {origem}: {texto_recebido}\n")
+
+            except socket.timeout:
+                print("O servidor não respondeu dentro do tempo esperado.\n")
+
+            except OSError as erro:
+                print(f"Falha na comunicação: {erro}\n")
+
+
+def main():
+    try:
+        dados = configurar_cliente()
+        enviar_mensagens(dados.ip, dados.porta)
+
+    except KeyboardInterrupt:
+        print("\nExecução interrompida pelo usuário.")
+
+    except OSError as erro:
+        print(f"Erro ao iniciar o cliente: {erro}")
+
+
+if __name__ == "__main__":
+    main()

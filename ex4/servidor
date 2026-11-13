@@ -1,0 +1,120 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+import socket
+import threading
+import logging
+import argparse
+from datetime import datetime
+
+
+# Controle compartilhado entre as threads
+contador_requisicoes = 0
+bloqueio_contador = threading.Lock()
+
+
+def configurar_servidor():
+    """Obtém o endereço e a porta pela linha de comando."""
+    parser = argparse.ArgumentParser(description="Servidor TCP de horário")
+    parser.add_argument("ip", help="Endereço IP para o servidor")
+    parser.add_argument("porta", type=int, help="Porta de comunicação")
+
+    return parser.parse_args()
+
+
+def configurar_logs():
+    """Define o formato e os destinos dos registros do servidor."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(threadName)s] %(message)s",
+        handlers=[
+            logging.FileHandler("servidor.log", encoding="utf-8"),
+            logging.StreamHandler()
+        ]
+    )
+
+
+def registrar_requisicao():
+    """Atualiza o contador de forma segura entre as threads."""
+    global contador_requisicoes
+
+    with bloqueio_contador:
+        contador_requisicoes += 1
+        return contador_requisicoes
+
+
+def processar_cliente(conexao, endereco):
+    """Atende uma solicitação de horário recebida por TCP."""
+    logging.info(f"Cliente conectado: {endereco}")
+
+    try:
+        mensagem = conexao.recv(1024).decode("utf-8").strip()
+
+        if mensagem == "HORA":
+            numero = registrar_requisicao()
+            horario = datetime.now().strftime("%H:%M:%S")
+
+            conexao.sendall(horario.encode("utf-8"))
+
+            logging.info(
+                f"Horário enviado para {endereco}: {horario} | "
+                f"Requisição nº {numero}"
+            )
+        elif mensagem:
+            logging.warning(
+                f"Solicitação desconhecida recebida de {endereco}: {mensagem}"
+            )
+        else:
+            logging.warning(f"O cliente {endereco} não enviou dados.")
+
+    except OSError as erro:
+        logging.error(f"Falha na comunicação com {endereco}: {erro}")
+
+    finally:
+        conexao.close()
+        logging.info(f"Conexão finalizada: {endereco}")
+
+
+def executar_servidor(ip, porta):
+    """Inicializa o socket e distribui as conexões entre threads."""
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
+        servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        servidor.bind((ip, porta))
+        servidor.listen()
+
+        logging.info(f"Servidor de horário ativo em {ip}:{porta}")
+
+        while True:
+            try:
+                conexao, endereco = servidor.accept()
+
+                trabalhador = threading.Thread(
+                    target=processar_cliente,
+                    args=(conexao, endereco),
+                    name=f"Cliente-{endereco[1]}",
+                    daemon=True
+                )
+
+                trabalhador.start()
+
+            except KeyboardInterrupt:
+                logging.info("Encerramento solicitado pelo operador.")
+                break
+
+            except OSError as erro:
+                logging.error(f"Erro ao aceitar conexão: {erro}")
+                break
+
+
+def main():
+    configuracao = configurar_servidor()
+    configurar_logs()
+
+    try:
+        executar_servidor(configuracao.ip, configuracao.porta)
+    except OSError as erro:
+        logging.error(f"Não foi possível iniciar o servidor: {erro}")
+
+
+if __name__ == "__main__":
+    main()

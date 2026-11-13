@@ -1,0 +1,91 @@
+
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+import socket
+import threading
+from datetime import datetime
+
+try:
+    ENDERECO_IP = input("Informe o endereço IP do servidor: ")
+    PORTA = int(input("Informe uma porta (0 para o SO escolher automaticamente): "))
+except (KeyboardInterrupt, ValueError):
+    print("\nServidor finalizado.")
+    raise SystemExit
+
+
+def gerenciar_cliente(conexao, endereco):
+    # Tratamento de exceção
+    try:
+        while True:
+            data = conexao.recv(1024).decode("utf-8")
+
+            # Verifica se o cliente encerrou a conexão
+            if not data:
+                print(f"Cliente {endereco[0]}:{endereco[1]} desconectado.")
+                break
+
+            # Obtém a data e a hora da mensagem
+            horario = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+            # Validação de mensagem vazia
+            if not data.strip():
+                print(f"[{horario}] Cliente {endereco[0]}:{endereco[1]} enviou uma mensagem vazia.")
+                conexao.sendall("Erro: Mensagem vazia não permitida.".encode("utf-8"))
+
+            elif data.lower().strip() == "sair":
+                print(f"[{horario}] Cliente {endereco[0]}:{endereco[1]} encerrou a conexão.")
+                break
+
+            else:
+                print(f"[{horario}] [{endereco[0]}:{endereco[1]}] Mensagem: {data}")
+                conexao.sendall("Mensagem recebida pelo servidor!".encode("utf-8"))
+
+    except Exception as e:
+        print(f"Erro na conexão com {endereco[0]}:{endereco[1]}: {e}")
+
+    finally:
+        conexao.close()
+
+
+def start_servidor_tcp():
+    # Cria o socket TCP
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    try:
+        # Faz a associação do IP e da porta
+        server_socket.bind((ENDERECO_IP, PORTA))
+
+        # Coloca o servidor em modo de escuta
+        server_socket.listen()
+
+        # Obtém a porta escolhida pelo sistema operacional
+        porta_real = server_socket.getsockname()[1]
+
+        print(f"Servidor ouvindo em {ENDERECO_IP}:{porta_real}...")
+
+        # Loop para permitir múltiplas conexões de clientes
+        while True:
+            conexao, endereco = server_socket.accept()
+
+            print(f"Conexão estabelecida com {endereco[0]}:{endereco[1]}!")
+
+            # Cria uma thread para atender cada cliente
+            thread = threading.Thread(
+                target=gerenciar_cliente,
+                args=(conexao, endereco)
+            )
+
+            thread.start()
+
+    except KeyboardInterrupt:
+        print("\nServidor finalizado.")
+
+    except OSError as e:
+        print(f"Erro ao iniciar ou executar o servidor: {e}")
+
+    finally:
+        server_socket.close()
+
+
+# Inicia o servidor TCP
+start_servidor_tcp()

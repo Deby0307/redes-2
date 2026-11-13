@@ -1,0 +1,71 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+import socket
+import argparse
+
+
+def obter_configuracoes():
+    """Configura o endereço IP e a porta do servidor."""
+
+    parser = argparse.ArgumentParser(
+        description="Servidor de eco utilizando protocolo UDP"
+    )
+
+    parser.add_argument("ip", help="Endereço IP para escutar")
+    parser.add_argument("porta", type=int, help="Porta de comunicação")
+
+    return parser.parse_args()
+
+
+def iniciar_servidor(ip, porta):
+    tamanho_maximo = 65507
+
+    # Cria o socket para comunicação UDP
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidor:
+
+        try:
+            servidor.bind((ip, porta))
+
+            print(f"Servidor UDP ativo em {ip}:{porta}")
+            print("Aguardando mensagens dos clientes...\n")
+
+            while True:
+                try:
+                    # Aguarda um datagrama enviado por algum cliente
+                    pacote, endereco_cliente = servidor.recvfrom(
+                        tamanho_maximo)
+
+                    mensagem = pacote.decode("utf-8", errors="replace")
+
+                    print(
+                        f"Cliente {endereco_cliente} enviou: {mensagem}"
+                    )
+
+                    # Retorna ao cliente o mesmo conteúdo recebido
+                    servidor.sendto(pacote, endereco_cliente)
+
+                except OSError as erro:
+                    print(f"Problema durante a comunicação: {erro}")
+
+        except KeyboardInterrupt:
+            print("\nServidor desligado pelo usuário.")
+
+        except OSError as erro:
+            print(f"Não foi possível executar o servidor: {erro}")
+
+
+def main():
+    try:
+        configuracoes = obter_configuracoes()
+
+        iniciar_servidor(
+            configuracoes.ip,
+            configuracoes.porta
+        )
+
+    except KeyboardInterrupt:
+        print("\nInicialização interrompida.")
+
+
+if __name__ == "__main__":
+    main()

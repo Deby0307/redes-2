@@ -1,0 +1,179 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+import socket
+import threading
+import argparse
+
+
+# Armazena os participantes conectados ao chat
+participantes = {}
+controle = threading.Lock()
+
+
+def configurar_servidor():
+    """Define os parâmetros de funcionamento do servidor."""
+
+    parser = argparse.ArgumentParser(
+        description="Servidor de chat TCP"
+    )
+
+    parser.add_argument("ip", help="Endereço IP do servidor")
+    parser.add_argument("porta", type=int, help="Porta de comunicação")
+
+    return parser.parse_args()
+
+
+def transmitir(mensagem, remetente=None):
+    """Distribui uma mensagem para os clientes conectados."""
+
+    with controle:
+        for conexao in list(participantes):
+
+            if conexao == remetente:
+                continue
+
+            try:
+                conexao.sendall(mensagem.encode("utf-8") + b"\n")
+
+            except OSError:
+                # Remove conexões que não conseguem mais receber dados
+                participantes.pop(conexao, None)
+
+
+def atender_cliente(conexao, endereco):
+    """Gerencia a comunicação individual com um participante."""
+
+    nome = None
+    buffer = b""
+
+    try:
+        # Recebe os dados enviados pelo cliente
+        while True:
+            dados = conexao.recv(1024)
+
+            if not dados:
+                break
+
+            buffer += dados
+
+            # Processa mensagens delimitadas por quebra de linha
+            while b"\n" in buffer:
+                linha, buffer = buffer.split(b"\n", 1)
+                texto = linha.decode("utf-8", errors="replace").strip()
+
+                if not texto:
+                    continue
+
+                # A primeira mensagem identifica o participante
+                if nome is None:
+                    nome = texto
+
+                    with controle:
+                        participantes[conexao] = nome
+
+                    print(f"{nome} entrou no chat: {endereco}")
+
+                    transmitir(f"{nome} entrou no chat.", conexao)
+                    conexao.sendall(
+                        b"Conexao estabelecida. Bem-vindo ao chat!\n"
+                    )
+
+                    continue
+
+                # Verifica se o usuário deseja sair
+                if texto.lower() == "sair":
+                    print(f"{nome} deixou o chat.")
+                    return
+
+                print(f"{nome}: {texto}")
+
+                transmitir(f"{nome}: {texto}", conexao)
+
+    except OSError as erro:
+        print(f"Falha na comunicação com {endereco}: {erro}")
+
+    finally:
+        if nome is not None:
+            with controle:
+                participantes.pop(conexao, None)
+
+            transmitir(f"{nome} saiu do chat.")
+            print(f"Conexão encerrada: {nome}")
+
+        try:
+            conexao.close()
+        except OSError:
+            pass
+
+
+def executar_servidor(ip, porta):
+    """Inicia o servidor e aceita novas conexões."""
+
+    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    servidor.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1
+    )
+
+    try:
+        servidor.bind((ip, porta))
+        servidor.listen()
+
+        print(f"Servidor iniciado em {ip}:{porta}")
+        print("Aguardando participantes...\n")
+
+        while True:
+            conexao, endereco = servidor.accept()
+
+            print(f"Nova conexão recebida de {endereco}")
+
+            # Cada participante é atendido por uma thread independente
+            tarefa = threading.Thread(
+                target=atender_cliente,
+                args=(conexao, endereco),
+                daemon=True
+            )
+
+            tarefa.start()
+
+    except KeyboardInterrupt:
+        print("\nDesligando o servidor...")
+
+    except OSError as erro:
+        print(f"Erro durante a execução: {erro}")
+
+    finally:
+        servidor.close()
+
+        with controle:
+            conexoes = list(participantes.keys())
+            participantes.clear()
+
+        for cliente in conexoes:
+            try:
+                cliente.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+            cliente.close()
+
+        print("Servidor finalizado.")
+
+
+def main():
+    try:
+        parametros = configurar_servidor()
+
+        executar_servidor(
+            parametros.ip,
+            parametros.porta
+        )
+
+    except KeyboardInterrupt:
+        print("\nInicialização cancelada.")
+
+
+if __name__ == "__main__":
+    main()

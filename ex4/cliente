@@ -1,0 +1,68 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+import socket
+import argparse
+
+
+def carregar_argumentos():
+    """Obtém o endereço e a porta do servidor."""
+
+    parser = argparse.ArgumentParser(
+        description="Cliente para consulta de horário via TCP"
+    )
+
+    parser.add_argument("ip", help="Endereço IP do servidor")
+    parser.add_argument("porta", type=int, help="Porta do servidor")
+
+    return parser.parse_args()
+
+
+def consultar_horario(endereco, porta):
+    """Estabelece a comunicação e solicita o horário ao servidor."""
+
+    try:
+        # Abre um socket TCP para realizar a conexão
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as conexao:
+
+            conexao.connect((endereco, porta))
+
+            print(f"Conexão estabelecida com {endereco}:{porta}")
+
+            # Encaminha o comando de solicitação de horário
+            comando = "HORA"
+            conexao.sendall(comando.encode("utf-8"))
+
+            # Aguarda os dados enviados pelo servidor
+            dados = conexao.recv(1024)
+
+            if dados:
+                horario = dados.decode("utf-8")
+                print(f"Horário atual informado pelo servidor: {horario}")
+            else:
+                print("O servidor encerrou a comunicação sem enviar dados.")
+
+    except ConnectionRefusedError:
+        print("Não foi possível estabelecer conexão com o servidor.")
+
+    except socket.timeout:
+        print("Tempo limite de comunicação excedido.")
+
+    except OSError as erro:
+        print(f"Falha na comunicação: {erro}")
+
+
+def main():
+    try:
+        parametros = carregar_argumentos()
+
+        consultar_horario(
+            parametros.ip,
+            parametros.porta
+        )
+
+    except KeyboardInterrupt:
+        print("\nConsulta interrompida pelo usuário.")
+
+
+if __name__ == "__main__":
+    main()

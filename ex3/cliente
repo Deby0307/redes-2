@@ -1,0 +1,127 @@
+# Discentes: Débora Yasmim Sousa Rocha, Laura Xavier De Oliveira
+
+
+import socket
+import threading
+import argparse
+
+
+def configurar():
+    """Obtém os parâmetros necessários para conectar ao servidor."""
+
+    parser = argparse.ArgumentParser(
+        description="Cliente de chat utilizando TCP"
+    )
+
+    parser.add_argument("ip", help="Endereço IP do servidor")
+    parser.add_argument("porta", type=int, help="Porta do servidor")
+
+    return parser.parse_args()
+
+
+def escutar_servidor(conexao, encerramento):
+    """Recebe e apresenta as mensagens encaminhadas pelo servidor."""
+
+    while not encerramento.is_set():
+        try:
+            dados = conexao.recv(1024)
+
+            if not dados:
+                print("\nO servidor encerrou a conexão.")
+                encerramento.set()
+                break
+
+            texto = dados.decode("utf-8", errors="replace")
+            print(f"\n{texto}")
+
+        except OSError:
+            encerramento.set()
+            break
+
+
+def conversar(conexao, encerramento):
+    """Controla a leitura das mensagens digitadas pelo usuário."""
+
+    try:
+        while not encerramento.is_set():
+
+            texto = input("Mensagem: ").strip()
+
+            if not texto:
+                print("Digite uma mensagem antes de enviar.")
+                continue
+
+            conexao.sendall(texto.encode("utf-8"))
+
+            if texto.lower() == "sair":
+                print("Finalizando participação no chat...")
+                encerramento.set()
+                break
+
+    except (OSError, EOFError) as erro:
+        print(f"\nNão foi possível enviar a mensagem: {erro}")
+        encerramento.set()
+
+    finally:
+        try:
+            conexao.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+        conexao.close()
+
+
+def main():
+    try:
+        parametros = configurar()
+
+        # Solicita a identificação do participante
+        usuario = input("Informe seu nome no chat: ").strip()
+
+        if not usuario:
+            print("O nome de usuário não pode ficar vazio.")
+            return
+
+        # Estabelece a conexão TCP com o servidor
+        conexao = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            conexao.connect((parametros.ip, parametros.porta))
+
+            print(f"\nBem-vindo ao chat, {usuario}!")
+            print("Digite 'sair' para deixar a conversa.\n")
+
+            # Envia a identificação para o servidor
+            conexao.sendall(usuario.encode("utf-8"))
+
+            encerramento = threading.Event()
+
+            # Thread dedicada ao recebimento das mensagens
+            leitor = threading.Thread(
+                target=escutar_servidor,
+                args=(conexao, encerramento),
+                daemon=True
+            )
+
+            leitor.start()
+
+            # A thread principal fica responsável pelo envio
+            conversar(conexao, encerramento)
+
+            leitor.join(timeout=1)
+
+        except ConnectionRefusedError:
+            print("Não foi possível estabelecer conexão com o servidor.")
+
+        except OSError as erro:
+            print(f"Erro durante a conexão: {erro}")
+
+        finally:
+            conexao.close()
+
+    except KeyboardInterrupt:
+        print("\nPrograma interrompido pelo usuário.")
+
+
+if __name__ == "__main__":
+    main()
