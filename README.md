@@ -162,6 +162,29 @@ Para executar os programas, é necessário possuir:
 - Git.
 - Wireshark para os exercícios de análise de tráfego.
 
+  
+### Exercício 7 – Resolução de Nomes via DNS
+
+Captura e análise de consultas DNS utilizando o Wireshark, com o objetivo de identificar os tipos de registros consultados, os servidores DNS utilizados e os registros retornados nas respostas.
+
+**Procedimentos realizados:**
+
+- Captura de pacotes de rede utilizando o Wireshark.
+- Acesso a um site pelo navegador para gerar consultas DNS.
+- Aplicação do filtro `dns` para localizar os pacotes.
+- Análise das consultas e respostas DNS.
+- Identificação dos tipos de registros solicitados e dos endereços IP retornados.
+
+**Análise:**
+
+Durante a captura, foram analisadas as consultas DNS realizadas para a resolução de nomes de domínio. Foram observados os tipos de registros consultados, o servidor DNS utilizado e as informações retornadas nas respostas, permitindo compreender como ocorre a tradução de nomes de domínio em endereços IP.
+
+**Arquivos:**
+
+- `captura-ex7.pcapng`: arquivo com os pacotes capturados.
+- `captura de tela.png`: captura de tela destacando as consultas e respostas DNS.
+
+
 Para verificar a versão do Python:
 
 ```bash
