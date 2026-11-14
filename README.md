@@ -185,6 +185,28 @@ Durante a captura, foram analisadas as consultas DNS realizadas para a resoluç�
 - `captura de tela.png`: captura de tela destacando as consultas e respostas DNS.
 
 
+### Exercício 8 – Tráfego ICMP (Ping)
+
+Captura e análise de pacotes ICMP utilizando o Wireshark, com o objetivo de observar a comunicação entre dispositivos por meio do comando `ping` e identificar o tempo de ida e volta (RTT) dos pacotes.
+
+**Procedimentos realizados:**
+
+- Captura de pacotes de rede utilizando o Wireshark.
+- Execução do comando `ping` para testar a conectividade com outro endereço IP.
+- Aplicação do filtro `icmp` para localizar os pacotes.
+- Identificação das mensagens Echo Request e Echo Reply.
+- Análise do tempo de ida e volta (RTT) dos pacotes.
+
+**Análise:**
+
+Durante a captura, foram observados pacotes ICMP utilizados para testar a conectividade entre dispositivos. Foram identificadas as mensagens Echo Request, enviadas pelo dispositivo de origem, e Echo Reply, correspondentes às respostas recebidas. A análise permite observar a comunicação entre os dispositivos e verificar o tempo de ida e volta dos pacotes (RTT).
+
+**Arquivos:**
+
+- `exercicio8.pcapng`: arquivo com os pacotes capturados.
+- `captura-img-wireshark`: imagem da captura no Wireshark.
+- `terminl-img`: imagem do terminal mostrando a execução do comando ping.
+
 Para verificar a versão do Python:
 
 ```bash
